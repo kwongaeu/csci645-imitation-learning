@@ -1,0 +1,45 @@
+# Third-party repositories: recreate from recorded URLs/commits
+/external/
+
+# Python environments
+/envs/
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Generated datasets and model checkpoints
+/data/
+/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Training logs and caches
+/logs/
+wandb/
+runs/
+.cache/
+*.log
+events.out.tfevents.*
+
+# Generated videos
+/videos/
+*.mp4
+*.gif
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Operating-system files
+.DS_Store
+Thumbs.db
