@@ -20,6 +20,7 @@ This stack was not tested on Ubuntu 22.04/CUDA 12.4.
 - Student: LeRobot 0.6.2, PyTorch 2.11.0+cu128, torchvision 0.26.0+cu128, NumPy 2.2.6.
 - Simulation environment: NumPy 2.5.4; full package pins are in the two portable requirements files.
 
+Other settings:
 - State/action dimensions: 66/8. Control/physics timesteps: 0.02/0.005 seconds. Horizon: 150 steps. Action repeat: 1.
 - Custom success: cube-target position error <0.05 m for five consecutive post-action steps, achieved at any time; no orientation threshold.
 - ACT: 20,000 updates, batch 64, AdamW lr=1e-4 and weight decay=1e-4, chunk=16, execute=4. Exact run settings and data hashes are in `configs/act{25,50,100}.json`; architecture is in `code/hw2.py:make_policy`.
@@ -52,13 +53,13 @@ KWON_GAEUL_HW2/
 
 Prerequisites: Linux, compatible NVIDIA driver/GPU, Git, Git LFS, uv, and FFmpeg available on PATH. On CARC, run inside a GPU allocation.
 
-### 1. Clone and pin dependencies
+### 1. Extract the submission and pin dependencies
 
 ```bash
-git clone https://github.com/DanielTakeshi/csci645-imitation-learning.git
-cd csci645-imitation-learning
+unzip KWON_GAEUL_HW2.zip
+cd KWON_GAEUL_HW2
 export HW2_ROOT="$PWD"
-mkdir -p external envs data checkpoints results videos logs .cache/uv .cache/tmp
+mkdir -p external envs data checkpoints results videos .cache/uv .cache/tmp
 export UV_CACHE_DIR="$HW2_ROOT/.cache/uv"
 export TMPDIR="$HW2_ROOT/.cache/tmp"
 
@@ -114,7 +115,7 @@ find external/mujoco_playground/logs -name ppo_network_config.json
 Use the completed run's checkpoint directory below. The upstream target budget is 20M environment steps; Brax's schedule rounding produced the original checkpoint at 24,576,000 steps.
 
 ```bash
-export TEACHER="$HW2_ROOT/external/mujoco_playground/logs/REPLACE_WITH_COMPLETED_RUN/checkpoints"
+export TEACHER="$HW2_ROOT/external/mujoco_playground/logs/<REPLACE_WITH_COMPLETED_RUN>/checkpoints"
 python code/hw2.py teacher --teacher "$TEACHER" --episodes 50
 ```
 
@@ -125,7 +126,7 @@ python code/hw2.py teacher --teacher "$TEACHER" --collect --target 100 --max-att
 python code/hw2.py prepare
 ```
 
-Update all manifests to the current teacher path; `prepare` regenerates the 25/100 manifests while the committed 50 manifest retains its selected filenames:
+Update all manifests to the current teacher path; `prepare` regenerates the 25/100 manifests while the included 50 manifest retains its selected filenames:
 
 ```bash
 python - <<'PY'
@@ -163,7 +164,7 @@ All episodes are evaluated, but only the first success and first failure per con
 
 ### 7. Additional videos for selected seeds (optional)
 
-Standard evaluation saves the first success and first failure. The following re-evaluates selected seeds for qualitative comparison. Videos go to `videos/<condition>/`; auxiliary metrics go to `results/video_review/`, preserving the final 50-episode evaluation files. Videos with the same filename are replaced.
+Standard evaluation saves the first success and first failure. The following re-evaluates selected seeds for qualitative comparison. Videos go to `videos/<condition>/`, and videos with the same filename are replaced.
 
 Run from the project root in the student environment after Step 6:
 
@@ -192,6 +193,10 @@ PY
 
 The seeds above were selected after inspecting evaluation outcomes.
 
+## Implementation adaptations
+
+`hw2.py` handles Brax checkpoint-loading compatibility, duplicates state inputs for the pinned ACT interface, and implements external normalization, action-chunk padding, and a custom position-and-hold success criterion. No upstream source-file edits are required. Full environment records are in `configs/environment.md`.
+
 ## References and LLM use
 
 - [MuJoCo Playground](https://github.com/google-deepmind/mujoco_playground)
@@ -201,4 +206,4 @@ The seeds above were selected after inspecting evaluation outcomes.
 
 MuJoCo Playground and Brax were used for the simulation environment and PPO teacher, and LeRobot provided the ACT implementation.
 I used ChatGPT to integrate codes for demonstration collection, training, evaluation, and plotting. ChatGPT also assisted with debugging and README documentation. 
-Experiments and reported measurements were produced on CARC. PPO and ACT were not implemented from scratch.
+Experiments and reported measurements were produced on CARC.
