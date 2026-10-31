@@ -14,7 +14,7 @@ CONFIG.mkdir(parents=True, exist_ok=True)
 
 
 def run(command):
-    return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT).strip()
+    return subprocess.check_output(command, text=True).strip()
 
 
 probe = r'''

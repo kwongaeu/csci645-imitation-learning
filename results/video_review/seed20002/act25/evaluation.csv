@@ -1,0 +1,2 @@
+reset_seed,success,episode_length,episode_return,min_distance,final_distance,condition,demonstrations,checkpoint_update
+20002,0,150,91.61343875527382,0.4069404900074005,0.4069404900074005,act25,25,20000

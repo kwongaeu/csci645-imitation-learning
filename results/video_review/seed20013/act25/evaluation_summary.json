@@ -1,0 +1,15 @@
+{
+  "episodes": 1,
+  "successes": 1,
+  "success_rate": 1.0,
+  "success_rule": {
+    "position_tolerance_m": 0.05,
+    "consecutive_steps": 5,
+    "episode_rule": "ever held within tolerance for five consecutive post-action states",
+    "orientation_required": false
+  },
+  "seeds": [
+    20013
+  ],
+  "device": "cpu"
+}

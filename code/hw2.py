@@ -1,4 +1,3 @@
-"""Homework integration; upstream ACT/PPO are dependencies, not vendored code."""
 import argparse
 import csv
 import hashlib
@@ -405,7 +404,7 @@ def summarize(args):
     fig,axes=plt.subplots(1,2,figsize=(10,4))
     seed_sets=[]
     for name in args.names:
-        cfg=read_json(ROOT/f'checkpoints/{name}/run.json')
+        cfg=read_json(ROOT/f'configs/{name}.json')
         summary=read_json(ROOT/f'results/{name}/evaluation_summary.json')
         seed_sets.append(summary['seeds'])
         with (ROOT/f'results/{name}/loss.csv').open() as f:
@@ -436,7 +435,7 @@ def main():
     t.add_argument('--max-attempts',type=int,default=2000)
     sub.add_parser('prepare')
     t=sub.add_parser('train')
-    t.add_argument('--demos',type=int,choices=[25,100],required=True)
+    t.add_argument('--demos',type=int,choices=[25,50,100],required=True)
     t.add_argument('--name',required=True)
     t.add_argument('--updates',type=int,default=20000)
     t.add_argument('--seed',type=int,default=0)

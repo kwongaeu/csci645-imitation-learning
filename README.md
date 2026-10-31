@@ -175,8 +175,6 @@ PY
 python code/smoke_test_env.py
 ```
 
-In CARC OnDemand, use the terminal inside a GPU allocation. The login/file-browser shell need not have GPU access. Long jobs can use Slurm with the user's actual account and GPU partition. No particular account/partition name is hard-coded here.
-
 ## 3. Train or restore the PPO teacher
 
 Activate `sim` and run the upstream state-based configuration:
