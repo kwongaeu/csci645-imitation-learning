@@ -1,0 +1,3 @@
+condition,demonstrations,teacher_success_rate,student_success_rate,evaluation_episodes,training_updates
+act100,100,1.0,0.7,50,20000
+act25,25,1.0,0.2,50,20000

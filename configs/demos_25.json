@@ -1,0 +1,37 @@
+{
+  "files": [
+    "episode_057.npz",
+    "episode_035.npz",
+    "episode_016.npz",
+    "episode_099.npz",
+    "episode_017.npz",
+    "episode_071.npz",
+    "episode_051.npz",
+    "episode_069.npz",
+    "episode_067.npz",
+    "episode_011.npz",
+    "episode_007.npz",
+    "episode_034.npz",
+    "episode_045.npz",
+    "episode_064.npz",
+    "episode_006.npz",
+    "episode_089.npz",
+    "episode_042.npz",
+    "episode_059.npz",
+    "episode_079.npz",
+    "episode_048.npz",
+    "episode_091.npz",
+    "episode_084.npz",
+    "episode_078.npz",
+    "episode_008.npz",
+    "episode_047.npz"
+  ],
+  "subset_seed": 42,
+  "teacher_checkpoint": "/scratch2/gaeulkwo/csci645-hw2/external/mujoco_playground/logs/PandaPickCube-20261029-173210-hw2_teacher/checkpoints/000024576000",
+  "success_rule": {
+    "position_tolerance_m": 0.05,
+    "consecutive_steps": 5,
+    "episode_rule": "ever held within tolerance for five consecutive post-action states",
+    "orientation_required": false
+  }
+}

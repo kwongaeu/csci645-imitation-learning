@@ -1,0 +1,18 @@
+{
+  "teacher_checkpoint": "/scratch2/gaeulkwo/csci645-hw2/external/mujoco_playground/logs/PandaPickCube-20261029-173210-hw2_teacher/checkpoints/000024576000",
+  "success_rule": {
+    "position_tolerance_m": 0.05,
+    "consecutive_steps": 5,
+    "episode_rule": "ever held within tolerance for five consecutive post-action states",
+    "orientation_required": false
+  },
+  "horizon": 150,
+  "action_repeat": 1,
+  "control_dt": 0.02,
+  "attempts": 50,
+  "success_rate": 1.0,
+  "accepted": [],
+  "teacher_inference": "deterministic",
+  "observation_dim": 66,
+  "action_dim": 8
+}
