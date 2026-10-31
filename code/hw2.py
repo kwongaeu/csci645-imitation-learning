@@ -47,7 +47,7 @@ def resolve_checkpoint(path):
     if children:
         p = max(children, key=lambda q: int(q.name))
     if not (p / 'ppo_network_config.json').exists():
-        raise RuntimeError(f'{p}: expected numbered PPO checkpoint with ppo_network_config.json')
+        raise RuntimeError(f'{p}: checkpoint folder is missing ppo_network_config.json')
     return p
 
 
@@ -58,11 +58,11 @@ def environment(teacher_path):
     p = resolve_checkpoint(teacher_path)
     config_file = p.parent / 'config.json'
     if not config_file.exists():
-        raise RuntimeError(f'Missing saved environment configuration: {config_file}')
+        raise RuntimeError(f'Environment config not found: {config_file}')
     cfg = ConfigDict(read_json(config_file))
     cfg.impl = 'jax'
     if cfg.action_repeat != 1:
-        raise RuntimeError('This integration supports action_repeat=1 only.')
+        raise RuntimeError('action_repeat must be 1.')
     env = registry.load('PandaPickCube', config=cfg, config_overrides={'impl': 'jax'})
     return env, jax.jit(env.reset), jax.jit(env.step), int(cfg.episode_length), p
 
@@ -73,12 +73,12 @@ def student_obs(state):
         obs = obs['state']
     x = np.asarray(obs, dtype=np.float32).copy()
     if x.ndim != 1 or not np.isfinite(x).all():
-        raise ValueError(f'Invalid observation shape/values: {x.shape}')
+        raise ValueError(f'Observation has the wrong shape or invalid values: {x.shape}')
     return x
 
 
 def distance(env, state):
-    # Private indices are intentional adapters to the pinned Playground task.
+    # Get the cube position using its body index.
     box = np.asarray(state.data.xpos[env._obj_body])
     target = np.asarray(state.info['target_pos'])
     return float(np.linalg.norm(box - target))
@@ -107,7 +107,7 @@ def rollout(env, reset, step, horizon, seed, action_fn, keep_states=False):
         obs = student_obs(state)
         action = np.asarray(action_fn(state, t), dtype=np.float32).copy()
         if action.shape != (env.action_size,) or not np.isfinite(action).all():
-            raise ValueError(f'Invalid action: {action}')
+            raise ValueError(f'Action has the wrong shape or invalid values: {action}')
         action = np.clip(action, -1, 1)
         state = step(state, jnp.asarray(action))
         d = distance(env, state)
@@ -121,7 +121,7 @@ def rollout(env, reset, step, horizon, seed, action_fn, keep_states=False):
         distances.append(d)
         dones.append(done)
         if keep_states:
-            # MJX states carry mutable info/metric dictionaries; snapshot them.
+            # Copy these dictionaries so later steps do not change saved states.
             trajectory.append(state.replace(info=dict(state.info), metrics=dict(state.metrics)))
         if done:
             break
@@ -140,9 +140,8 @@ def teacher(args):
     from brax.training.agents.ppo import checkpoint
     env, reset, step, horizon, p = environment(args.teacher)
     if not hasattr(checkpoint, 'load_policy'):
-        raise RuntimeError('Installed Brax lacks checkpoint.load_policy. Share Brax version and checkpoint listing; do not upgrade blindly.')
-    # Brax saves optional initializers as JSON null, but its loader
-    # mistakenly treats null as a registered initializer name.
+        raise RuntimeError('Brax cannot load this policy. Check the pinned Brax version.')
+    # Allow empty initializer settings when loading the Brax checkpoint.
     from brax.training import networks as brax_networks
 
     initializers = brax_networks.KERNEL_INITIALIZER
@@ -157,7 +156,7 @@ def teacher(args):
         actual_obs_dim = student_obs(reset(jax.random.PRNGKey(0))).shape[0]
 
         def restored_network_factory(observation_size, action_size, **kwargs):
-            # Recover a flat observation shape serialized as metadata.
+            # Read the observation size from the saved shape.
             if isinstance(observation_size, Mapping) and "shape" in observation_size:
                 shape = tuple(observation_size["shape"])
                 if shape != (actual_obs_dim,):
@@ -189,7 +188,7 @@ def teacher(args):
         out = ROOT / 'data/demos'
         out.mkdir(parents=True, exist_ok=True)
         if list(out.glob('episode_*.npz')):
-            raise RuntimeError('Demonstrations already exist. Preserve them; use a new project/data directory for recollection.')
+            raise RuntimeError('Demo files already exist. Use a fresh project folder to collect again.')
         start, attempts = 0, args.max_attempts
     else:
         out = ROOT / 'results/teacher'
@@ -201,7 +200,7 @@ def teacher(args):
     for i in range(attempts):
         seed = start + i
         if args.collect and seed >= 10000:
-            raise RuntimeError('Collection must not overlap development seeds.')
+            raise RuntimeError('Collection seeds must be below 10000.')
         def act(state, t):
             key = jax.random.fold_in(jax.random.PRNGKey(seed + 30000), t)
             return policy(state.obs, key)[0]
@@ -243,7 +242,7 @@ def teacher(args):
         fig.savefig(ROOT / 'results/expert_demonstrations.png', dpi=160)
         plt.close(fig)
     if args.collect and len(accepted) < args.target:
-        raise RuntimeError(f'Only {len(accepted)} successes. Data preserved; improve teacher before a fresh collection.')
+        raise RuntimeError(f'Collected only {len(accepted)} successful demos. Data was saved; check the teacher before collecting again.')
 
 
 def prepare(args):
@@ -251,7 +250,7 @@ def prepare(args):
     meta = read_json(base / 'metadata.json')
     files = meta['accepted']
     if len(files) != 100:
-        raise ValueError('Expected exactly 100 accepted demonstrations.')
+        raise ValueError('Expected exactly 100 successful demos.')
     indices = np.random.default_rng(42).choice(100, 25, replace=False).tolist()
     for n, names in [(100, files), (25, [files[i] for i in indices])]:
         save_json(ROOT / f'configs/demos_{n}.json', {'files': names, 'subset_seed':42,
@@ -261,15 +260,14 @@ def prepare(args):
         'length_mean':float(np.mean(lengths)), 'length_std':float(np.std(lengths)),
         'retained_success_fraction':1.0, 'collection_attempts':meta['attempts'],
         'collection_success_fraction':meta['success_rate'], 'subset_indices':indices})
-    print('Saved manifests and dataset statistics.')
+    print('Saved demo file lists and dataset summary.')
 
 
 def make_policy(odim, adim, chunk=16, execute=4):
     from lerobot.configs.types import FeatureType, PolicyFeature
     from lerobot.policies.act.configuration_act import ACTConfig
     from lerobot.policies.act.modeling_act import ACTPolicy
-    # Both tokens receive the same full observation. No new privileged information is added.
-    # The robot-state token avoids an OBS_STATE assumption in the pinned VAE padding code.
+    # Give both inputs the same state vector.
     cfg = ACTConfig(input_features={
         OBS:PolicyFeature(type=FeatureType.ENV, shape=(odim,)),
         ROBOT:PolicyFeature(type=FeatureType.STATE, shape=(odim,))},
@@ -283,7 +281,7 @@ def make_policy(odim, adim, chunk=16, execute=4):
 def train(args):
     import torch
     if not torch.cuda.is_available():
-        raise RuntimeError('CUDA unavailable in student environment.')
+        raise RuntimeError('CUDA is not available. Check the GPU and PyTorch installation.')
     torch.set_num_threads(4)
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -308,7 +306,7 @@ def train(args):
     out = ROOT / 'checkpoints' / args.name
     out.mkdir(parents=True, exist_ok=True)
     if (out / 'last.pt').exists():
-        raise RuntimeError('Run already exists; choose a different --name.')
+        raise RuntimeError('A checkpoint already exists. Choose a new --name.')
     np.savez(out / 'normalization.npz', **stats)
     policy.config.save_pretrained(out)
     config = {'demos':args.demos, 'updates':args.updates, 'batch_size':64,
@@ -343,7 +341,7 @@ def train(args):
             policy.train()
             loss, metrics=policy(batch)
             if not torch.isfinite(loss):
-                raise RuntimeError('Nonfinite training loss')
+                raise RuntimeError('Training loss is NaN or infinity.')
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(policy.parameters(),1.0)
@@ -414,7 +412,7 @@ def summarize(args):
             teacher_success_rate=teacher_meta['success_rate'],student_success_rate=summary['success_rate'],
             evaluation_episodes=summary['episodes'],training_updates=cfg['updates']))
     if any(s!=seed_sets[0] for s in seed_sets):
-        raise ValueError('Evaluation seeds differ across conditions')
+        raise ValueError('All conditions must use the same evaluation seeds.')
     write_csv(ROOT/'results/comparison.csv',rows)
     axes[0].set(xlabel='Optimizer update',ylabel='Training L1 (normalized actions)')
     axes[0].legend()

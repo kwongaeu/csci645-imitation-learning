@@ -97,7 +97,6 @@ export JAX_DEFAULT_MATMUL_PRECISION=highest
 
 # CARC only; elsewhere you need to install FFmpeg through the local system.
 module load ffmpeg
-command -v ffmpeg
 ```
 
 ### 3. Train the PPO teacher
@@ -112,7 +111,7 @@ cd "$HW2_ROOT"
 find external/mujoco_playground/logs -name ppo_network_config.json
 ```
 
-Use the completed run's checkpoint directory below. The upstream target budget is 20M environment steps; Brax's schedule rounding produced the original checkpoint at 24,576,000 steps.
+Use the completed run's checkpoint directory below. The upstream target budget is 20M environment steps, but Brax's schedule rounding produced the original checkpoint at 24,576,000 steps.
 
 ```bash
 export TEACHER="$HW2_ROOT/external/mujoco_playground/logs/<REPLACE_WITH_COMPLETED_RUN>/checkpoints"
