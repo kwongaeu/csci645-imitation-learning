@@ -2,22 +2,24 @@
 
 PPO demonstrations are used to train ACT with 25, 50, and 100 trajectories.
 
-| Demonstrations | Successful evaluations | Success rate |
-|---:|---:|---:|
-| 25 | 10/50 | 20% |
-| 50 | 18/50 | 36% |
-| 100 | 35/50 | 70% |
+| Condition | Number of demonstrations | Teacher success rate | Student success rate | Evaluation episodes |
+|---|---:|---:|---:|---:|
+| Baseline (ACT-100) | 100 | 100% | 70% (35/50) | 50 |
+| Ablation (ACT-25) | 25 | 100% | 20% (10/50) | 50 |
+| Intermediate (ACT-50) | 50 | 100% | 36% (18/50) | 50 |
 
-The teacher succeeded in 50/50 development evaluations. The collected dataset contains 100 successful episodes, each 150 steps long.
+Teacher success was measured over 50 independent episodes. All student policies were evaluated on the same 50 unseen initializations (seeds 20000–20049).
 
 ## Environment and settings
+
+This stack was not tested on Ubuntu 22.04/CUDA 12.4. 
 
 - Tested platform: USC CARC OnDemand, Rocky Linux 8.10, NVIDIA A100 40GB, NVIDIA driver 580.159.04.
 - CPU recorded at final capture: AMD EPYC 7513. Python: 3.12.12.
 - Both environments: JAX/jaxlib/CUDA-12 plugins 0.8.2, Flax 0.12.0, Brax 0.14.2, MuJoCo/MJX 3.17.0.
 - Student: LeRobot 0.6.2, PyTorch 2.11.0+cu128, torchvision 0.26.0+cu128, NumPy 2.2.6.
 - Simulation environment: NumPy 2.5.4; full package pins are in the two portable requirements files.
-- This stack was not tested on Ubuntu 22.04/CUDA 12.4. Use a driver compatible with the pinned CUDA builds; `nvidia-smi`'s CUDA field describes driver capability, not PyTorch's runtime.
+
 - State/action dimensions: 66/8. Control/physics timesteps: 0.02/0.005 seconds. Horizon: 150 steps. Action repeat: 1.
 - Custom success: cube-target position error <0.05 m for five consecutive post-action steps, achieved at any time; no orientation threshold.
 - ACT: 20,000 updates, batch 64, AdamW lr=1e-4 and weight decay=1e-4, chunk=16, execute=4. Exact run settings and data hashes are in `configs/act{25,50,100}.json`; architecture is in `code/hw2.py:make_policy`.
@@ -36,7 +38,15 @@ KWON_GAEUL_HW2/
 └── videos/         # Expert and student rollouts
 ```
 
-The following working directories are generated during reproduction and excluded from the submission: `external/` (upstream repositories and PPO artifacts), `envs/` (Python environments), `data/` (demonstrations), and `checkpoints/` (ACT models).
+The following directories are generated during reproduction and excluded from the submission:
+
+```text
+KWON_GAEUL_HW2/
+├── checkpoints/    # ACT models
+├── data/           # Demonstrations
+├── envs/           # Python environments
+└── external/       # Upstream repositories and PPO artifacts
+```
 
 ## How to reproduce experiments
 
@@ -59,7 +69,9 @@ GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/huggingface/lerobot.git exter
 git -C external/lerobot checkout "$(cat configs/lerobot_commit.txt)"
 ```
 
-External commits: Playground `12ad7f3842791ced39f27e5ac96d066bbe361653`; LeRobot `38b975c5bca0db0ce11a65705419cca001c6dafa`.
+External commits: 
+- Playground `12ad7f3842791ced39f27e5ac96d066bbe361653`
+- LeRobot `38b975c5bca0db0ce11a65705419cca001c6dafa`.
 
 ### 2. Install environments
 
@@ -69,14 +81,12 @@ uv venv --python 3.12.12 envs/sim
 source envs/sim/bin/activate
 uv pip install -r configs/requirements-sim-portable.txt
 uv pip install -e external/mujoco_playground
-uv pip check
 deactivate
 
 uv venv --python 3.12.12 envs/student
 source envs/student/bin/activate
 uv pip install --torch-backend=cu128 -r configs/requirements-student-portable.txt
 uv pip install -e external/mujoco_playground -e external/lerobot
-uv pip check
 ```
 
 Set in every runtime shell/job:
@@ -85,6 +95,7 @@ Set in every runtime shell/job:
 export MUJOCO_GL=egl
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export JAX_DEFAULT_MATMUL_PRECISION=highest
+
 # CARC only; elsewhere you need to install FFmpeg through the local system.
 module load ffmpeg
 command -v ffmpeg
@@ -159,7 +170,7 @@ Standard evaluation saves the first success and first failure. The following re-
 Run from the project root in the student environment after Step 6:
 
 ```bash
-module load ffmpeg  # CARC
+module load ffmpeg  # if using CARC
 python - <<'PY'
 import argparse
 import sys
@@ -181,17 +192,7 @@ for seed in [20002, 20004, 20013]:
 PY
 ```
 
-These seeds were selected after inspecting evaluation outcomes. Report quantitative success using all 50 episodes. Video success labels refer to the target-position hold criterion, not merely grasping.
-
-## Code adaptations and artifacts
-
-- Playground supplies the environment and teacher training entry point; Brax supplies PPO/checkpoint utilities; LeRobot supplies ACT.
-- `hw2.py` adds collection, NumPy datasets, subsets, external mean/std normalization, masked action chunks, the training loop, evaluation and plots. Full state is duplicated into robot/environment tokens for the pinned ACT VAE interface.
-- Teacher restoration handles null initializer fields and serialized flat-observation shape metadata. No upstream source or trained weights are edited.
-- `configs/act*.json` record completed runs; editing them does not configure training. Training reads `demos_*.json` and CLI options; other settings are in `hw2.py`.
-- Data and checkpoints are regenerated above; they are not included in Git. Keep the teacher's `config.json`, numbered Orbax checkpoint and `ppo_network_config.json` together. Existing student checkpoints also contain the original teacher path; copying weights alone to another machine is insufficient for direct evaluation.
-- Use a fresh clone/output directory for reproduction: collection/training refuse to overwrite existing data/checkpoints, and evaluation overwrites its CSVs. Preserve submitted results before rerunning. Exact numerical results can vary across systems.
-- The Brightspace ZIP additionally contains `report.pdf` and representative videos; entire `external/` and `envs/` directories are excluded.
+The seeds above were selected after inspecting evaluation outcomes.
 
 ## References and LLM use
 
