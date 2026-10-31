@@ -64,14 +64,12 @@ export TMPDIR="$HW2_ROOT/.cache/tmp"
 
 git lfs install --skip-smudge
 git clone https://github.com/google-deepmind/mujoco_playground.git external/mujoco_playground
-git -C external/mujoco_playground checkout "$(cat configs/playground_commit.txt)"
+git -C external/mujoco_playground checkout \
+    12ad7f3842791ced39f27e5ac96d066bbe361653
 GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/huggingface/lerobot.git external/lerobot
-git -C external/lerobot checkout "$(cat configs/lerobot_commit.txt)"
+git -C external/lerobot checkout \
+    38b975c5bca0db0ce11a65705419cca001c6dafa
 ```
-
-External commits: 
-- Playground `12ad7f3842791ced39f27e5ac96d066bbe361653`
-- LeRobot `38b975c5bca0db0ce11a65705419cca001c6dafa`.
 
 ### 2. Install environments
 
@@ -201,4 +199,6 @@ The seeds above were selected after inspecting evaluation outcomes.
 - [LeRobot](https://github.com/huggingface/lerobot)
 - [ACT: Zhao et al., RSS 2023](https://arxiv.org/abs/2304.13705)
 
-ChatGPT assisted with environment setup, code debugging and documentation. Experiments and reported measurements were produced on CARC. PPO and ACT were not implemented from scratch.
+MuJoCo Playground and Brax were used for the simulation environment and PPO teacher, and LeRobot provided the ACT implementation.
+I used ChatGPT to integrate codes for demonstration collection, training, evaluation, and plotting. ChatGPT also assisted with debugging and README documentation. 
+Experiments and reported measurements were produced on CARC. PPO and ACT were not implemented from scratch.
